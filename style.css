@@ -665,3 +665,30 @@ h1 {
     box-shadow: 0 0 6px var(--neon-cyan);
 }
 
+/* Syntax Highlighting Tokens */
+.hl-keyword { color: var(--neon-purple); font-weight: 700; }
+.hl-type { color: var(--neon-cyan); }
+.hl-comment { color: var(--text-muted); font-style: italic; }
+.hl-number { color: var(--neon-green); }
+.hl-operator { color: var(--neon-yellow); }
+.hl-string { color: var(--text-secondary); }
+
+/* Heatmap Editing Field */
+.heatmap-edit-input {
+    width: 22px;
+    height: 22px;
+    background: #000;
+    border: 1px solid var(--neon-cyan);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-align: center;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    box-sizing: border-box;
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+}
+
+

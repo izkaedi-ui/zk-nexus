@@ -256,6 +256,46 @@ function log(msg, type = "info") {
 }
 
 // ----------------------------------------------------
+// CIRCOM CODE SYNTAX HIGHLIGHTER
+// ----------------------------------------------------
+function updateSyntaxHighlighting() {
+    const editor = document.getElementById("circom-editor");
+    const highlight = document.getElementById("editor-highlight");
+    if (!editor || !highlight) return;
+    
+    let text = editor.value;
+    
+    // Escape HTML tags to prevent injections
+    text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    
+    // 1. Comments: // ... or /* ... */
+    const comments = [];
+    text = text.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, (match) => {
+        comments.push(match);
+        return `__COMMENT_TOKEN_${comments.length - 1}__`;
+    });
+    
+    // 2. Keywords: template, component, main, function, return, if, else, for
+    text = text.replace(/\b(template|component|main|function|return|if|else|for)\b/g, '<span class="hl-keyword">$1</span>');
+    
+    // 3. Types: signal, input, output, local
+    text = text.replace(/\b(signal|input|output|local)\b/g, '<span class="hl-type">$1</span>');
+    
+    // 4. Numbers: digits
+    text = text.replace(/\b(\d+)\b/g, '<span class="hl-number">$1</span>');
+    
+    // 5. Operators: <== | === | ===> | + | - | * | / | =
+    text = text.replace(/(&lt;==|===|===&gt;|\+|-|\*|\/|=)/g, '<span class="hl-operator">$1</span>');
+    
+    // 6. Restore comments
+    text = text.replace(/__COMMENT_TOKEN_(\d+)__/g, (match, idx) => {
+        return `<span class="hl-comment">${comments[parseInt(idx)]}</span>`;
+    });
+    
+    highlight.innerHTML = text + "\n";
+}
+
+// ----------------------------------------------------
 // WEBAUDIO SYNTHESIZER
 // ----------------------------------------------------
 function initAudio() {
@@ -265,18 +305,45 @@ function initAudio() {
     initDrone();
 }
 
+let analyserNode = null;
+let delayNode = null;
+let delayFeedback = null;
+
 function initDrone() {
     if (!audioCtx || droneGain) return;
     try {
+        // Create AnalyserNode for live waveforms
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 128; // small size for fast draws
+        
         // Create BiquadFilter to keep drone low-pass analog warm
         droneFilter = audioCtx.createBiquadFilter();
         droneFilter.type = "lowpass";
         droneFilter.frequency.setValueAtTime(280, audioCtx.currentTime);
         
-        droneGain = audioCtx.createGain();
-        droneGain.gain.setValueAtTime(isMuted ? 0 : 0.02, audioCtx.currentTime);
+        // Create feedback delay line
+        delayNode = audioCtx.createDelay(1.0);
+        delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime); // 400ms delay
         
-        droneFilter.connect(droneGain);
+        delayFeedback = audioCtx.createGain();
+        delayFeedback.gain.setValueAtTime(0.45, audioCtx.currentTime); // 45% echo feedback
+        
+        // Connect feedback loop
+        delayNode.connect(delayFeedback);
+        delayFeedback.connect(delayNode);
+        
+        // Connect synth gain node
+        droneGain = audioCtx.createGain();
+        const volumeSlider = document.getElementById("slider-volume");
+        const baseVol = volumeSlider ? (parseFloat(volumeSlider.value) / 100) * 0.05 : 0.015;
+        droneGain.gain.setValueAtTime(isMuted ? 0 : baseVol, audioCtx.currentTime);
+        
+        // Connect paths:
+        droneFilter.connect(analyserNode);
+        droneFilter.connect(delayNode);
+        
+        delayNode.connect(analyserNode);
+        analyserNode.connect(droneGain);
         droneGain.connect(audioCtx.destination);
         
         // 4 voices chord detuned
@@ -284,13 +351,19 @@ function initDrone() {
         for (let i = 0; i < 4; i++) {
             const osc = audioCtx.createOscillator();
             osc.type = i % 2 === 0 ? "sawtooth" : "triangle";
-            // Detune slightly
             osc.frequency.setValueAtTime(basePitches[i] + (Math.random() - 0.5) * 0.4, audioCtx.currentTime);
             osc.connect(droneFilter);
             osc.start(0);
             droneOscs.push(osc);
         }
-        log("Continuous ambient modular drone synth activated.", "info");
+        log("Continuous ambient modular drone synth activated with echo delay.", "info");
+        
+        // Show and animate waveform canvas
+        const waveCanvas = document.getElementById("audio-waveform");
+        if (waveCanvas) {
+            waveCanvas.style.display = "block";
+            startWaveformAnimation();
+        }
     } catch(e) {
         console.error("Audio drone error: ", e);
     }
@@ -318,9 +391,68 @@ function updateDroneChords(satisfied) {
 
 function updateDroneVolume() {
     if (droneGain && audioCtx) {
-        const targetVol = isMuted ? 0 : 0.02;
+        const volumeSlider = document.getElementById("slider-volume");
+        const sliderVal = volumeSlider ? parseFloat(volumeSlider.value) : 30;
+        
+        // Scale volume between 0 and 0.05
+        const baseVol = (sliderVal / 100) * 0.05;
+        const targetVol = isMuted ? 0 : baseVol;
         droneGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.1);
     }
+}
+
+function startWaveformAnimation() {
+    const waveCanvas = document.getElementById("audio-waveform");
+    if (!waveCanvas) return;
+    const wCtx = waveCanvas.getContext("2d");
+    
+    function drawWave() {
+        if (!analyserNode) return;
+        requestAnimationFrame(drawWave);
+        
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        if (isMuted) {
+            wCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+            wCtx.beginPath();
+            wCtx.moveTo(0, waveCanvas.height / 2);
+            wCtx.lineTo(waveCanvas.width, waveCanvas.height / 2);
+            wCtx.strokeStyle = "rgba(0, 242, 254, 0.2)";
+            wCtx.lineWidth = 1.5;
+            wCtx.stroke();
+            return;
+        }
+        
+        analyserNode.getByteTimeDomainData(dataArray);
+        wCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+        wCtx.lineWidth = 1.5;
+        wCtx.strokeStyle = "var(--neon-cyan)";
+        wCtx.shadowBlur = 4;
+        wCtx.shadowColor = "var(--neon-cyan)";
+        wCtx.beginPath();
+        
+        const sliceWidth = waveCanvas.width / bufferLength;
+        let x = 0;
+        
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = (v * waveCanvas.height) / 2;
+            
+            if (i === 0) {
+                wCtx.moveTo(x, y);
+            } else {
+                wCtx.lineTo(x, y);
+            }
+            x += sliceWidth;
+        }
+        
+        wCtx.lineTo(waveCanvas.width, waveCanvas.height / 2);
+        wCtx.stroke();
+        wCtx.shadowBlur = 0;
+    }
+    
+    drawWave();
 }
 
 function playSoundChime(type) {
@@ -455,6 +587,26 @@ window.addEventListener("DOMContentLoaded", () => {
         exportCanvas();
     });
     
+    // Volume Slider
+    const volSlider = document.getElementById("slider-volume");
+    if (volSlider) {
+        volSlider.addEventListener("input", () => {
+            initAudio();
+            updateDroneVolume();
+        });
+    }
+
+    // Syntax Highlight Sync
+    const circomEditor = document.getElementById("circom-editor");
+    const editorHighlight = document.getElementById("editor-highlight");
+    if (circomEditor && editorHighlight) {
+        circomEditor.addEventListener("input", updateSyntaxHighlighting);
+        circomEditor.addEventListener("scroll", () => {
+            editorHighlight.scrollTop = circomEditor.scrollTop;
+            editorHighlight.scrollLeft = circomEditor.scrollLeft;
+        });
+    }
+    
     // Modal controls
     document.getElementById("btn-close-modal").addEventListener("click", () => {
         document.getElementById("add-node-modal").classList.remove("active");
@@ -482,6 +634,9 @@ function loadPreset(key) {
     const preset = PRESETS[key];
     document.getElementById("preset-description").innerText = preset.description;
     document.getElementById("circom-editor").value = preset.code;
+    
+    // Highlight syntax
+    updateSyntaxHighlighting();
     
     // Load signals and deep copy
     signals = JSON.parse(JSON.stringify(preset.signals));
@@ -951,7 +1106,8 @@ function renderR1CSMatrices() {
                                          data-col="${cIdx}" 
                                          data-val="${val}"
                                          onmouseenter="showHeatmapTooltip(this)"
-                                         onmouseleave="clearHeatmapTooltip()">${val !== 0 ? val : "0"}</div>
+                                         onmouseleave="clearHeatmapTooltip()"
+                                         onclick="editMatrixCell(this)">${val !== 0 ? val : "0"}</div>
                                 `;
                             }).join('')}
                         </div>
@@ -1397,6 +1553,26 @@ function animationLoop() {
     ctx.translate(offset.x, offset.y);
     ctx.scale(scale, scale);
     
+    // Draw background coordinate dot grid
+    ctx.fillStyle = "rgba(0, 242, 254, 0.04)";
+    const gridSize = 40;
+    const gridLimitX = canvas.width / scale;
+    const gridLimitY = canvas.height / scale;
+    
+    const startX = -Math.floor(offset.x / (gridSize * scale)) * gridSize - gridSize * 2;
+    const endX = startX + gridLimitX + gridSize * 4;
+    
+    const startY = -Math.floor(offset.y / (gridSize * scale)) * gridSize - gridSize * 2;
+    const endY = startY + gridLimitY + gridSize * 4;
+    
+    for (let x = startX; x < endX; x += gridSize) {
+        for (let y = startY; y < endY; y += gridSize) {
+            ctx.beginPath();
+            ctx.arc(x, y, 1.0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
     // 1. Draw connections/wires
     ctx.lineWidth = 2;
     links.forEach(link => {
@@ -1444,8 +1620,23 @@ function animationLoop() {
         ctx.shadowBlur = 0;
     });
     
-    // 3.1 Draw toxic waste ceremony particles
+    // 3.1 Draw toxic waste ceremony particles with central gravity
     toxicParticles.forEach((tp, idx) => {
+        if (tp.pull) {
+            const centerX = canvas.width / (2 * scale);
+            const centerY = canvas.height / (2 * scale);
+            const dx = centerX - tp.x;
+            const dy = centerY - tp.y;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            
+            const strength = 0.08;
+            tp.vx += (dx / dist) * strength;
+            tp.vy += (dy / dist) * strength;
+            
+            tp.vx *= 0.95;
+            tp.vy *= 0.95;
+        }
+        
         tp.x += tp.vx;
         tp.y += tp.vy;
         tp.life -= tp.decay;
@@ -1462,6 +1653,43 @@ function animationLoop() {
         ctx.fill();
         ctx.shadowBlur = 0;
     });
+    
+    // 3.2 Draw Setup Incinerator (Black Hole Singularity)
+    const setupBar = document.getElementById("ceremony-status-bar");
+    if (setupBar && setupBar.style.display === "block") {
+        ctx.save();
+        const centerX = canvas.width / (2 * scale);
+        const centerY = canvas.height / (2 * scale);
+        
+        const pulse = 1 + Math.sin(Date.now() * 0.015) * 0.12;
+        const rad = 25 * pulse;
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rad + 18, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(189, 0, 255, 0.15)";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rad + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(0, 242, 254, 0.35)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rad, 0, Math.PI * 2);
+        ctx.fillStyle = "#020408";
+        ctx.strokeStyle = "var(--neon-purple)";
+        ctx.lineWidth = 3;
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.fillStyle = "rgba(0, 242, 254, 0.8)";
+        ctx.font = "bold 9px 'Fira Code', monospace";
+        const txt = "SRS INCINERATOR";
+        ctx.fillText(txt, centerX - ctx.measureText(txt).width/2, centerY + 3);
+        ctx.restore();
+    }
     
     // 4. Draw nodes
     nodes.forEach(node => {
@@ -1748,19 +1976,23 @@ function runSetupCeremony() {
             progressEl.style.width = `${progress}%`;
         }
         
-        // Visual toxic waste particles decay animation on canvas
+        // Spawn outer particles pulled toward center incinerator
         if (progress % 10 === 0 && canvas) {
-            // Spawn some floating green/purple particles
-            for (let i = 0; i < 6; i++) {
+            const centerX = canvas.width / (2 * scale);
+            const centerY = canvas.height / (2 * scale);
+            for (let i = 0; i < 8; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 200 + Math.random() * 100;
                 toxicParticles.push({
-                    x: Math.random() * (canvas.width / scale),
-                    y: Math.random() * (canvas.height / scale),
-                    vx: (Math.random() - 0.5) * 6,
-                    vy: (Math.random() - 0.5) * 6,
-                    size: 3 + Math.random() * 6,
+                    x: centerX + Math.cos(angle) * distance,
+                    y: centerY + Math.sin(angle) * distance,
+                    vx: 0,
+                    vy: 0,
+                    size: 3 + Math.random() * 5,
                     life: 1.0,
-                    decay: 0.015 + Math.random() * 0.02,
-                    color: Math.random() > 0.5 ? '#bd00ff' : '#39ff14'
+                    decay: 0.01 + Math.random() * 0.01,
+                    color: Math.random() > 0.5 ? '#bd00ff' : '#39ff14',
+                    pull: true
                 });
             }
         }
@@ -1785,15 +2017,17 @@ function runSetupCeremony() {
             playSoundChime('success');
             
             // Flash canvas with clean particle burst
-            for (let i = 0; i < 30; i++) {
+            const centerX = canvas.width / (2 * scale);
+            const centerY = canvas.height / (2 * scale);
+            for (let i = 0; i < 35; i++) {
                 toxicParticles.push({
-                    x: (canvas.width / (2 * scale)),
-                    y: (canvas.height / (2 * scale)),
+                    x: centerX,
+                    y: centerY,
                     vx: (Math.random() - 0.5) * 12,
                     vy: (Math.random() - 0.5) * 12,
                     size: 4 + Math.random() * 8,
                     life: 1.0,
-                    decay: 0.02 + Math.random() * 0.02,
+                    decay: 0.015 + Math.random() * 0.015,
                     color: '#00f2fe'
                 });
             }
@@ -1995,5 +2229,56 @@ function prevTourStep() {
         renderTourSlide();
         playSoundChime('success');
     }
+}
+
+// ----------------------------------------------------
+// EDITABLE R1CS COEFFICIENTS
+// ----------------------------------------------------
+function editMatrixCell(el) {
+    if (el.querySelector("input")) return;
+    
+    const matrix = el.getAttribute("data-matrix");
+    const row = parseInt(el.getAttribute("data-row"));
+    const col = parseInt(el.getAttribute("data-col"));
+    const val = parseFloat(el.getAttribute("data-val"));
+    
+    el.innerHTML = "";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.className = "heatmap-edit-input";
+    input.value = val;
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    
+    const finishEdit = () => {
+        const newVal = parseFloat(input.value) || 0;
+        
+        // Update matrix coefficient value
+        r1csMatrices[matrix][row][col] = newVal;
+        el.innerHTML = newVal !== 0 ? newVal : "0";
+        el.setAttribute("data-val", newVal);
+        
+        // Re-assign magnitude/polarity classes
+        el.classList.remove("val-zero", "val-pos", "val-neg");
+        if (newVal === 0) el.classList.add("val-zero");
+        else if (newVal > 0) el.classList.add("val-pos");
+        else el.classList.add("val-neg");
+        
+        const signalName = witnessVector[col] ? witnessVector[col].name : `s[${col}]`;
+        const gateId = gates[row] ? gates[row].id.toUpperCase() : `G${row+1}`;
+        log(`Edited matrix cell ${matrix}[${gateId}, ${signalName}] value to ${newVal}`, "info");
+        
+        // Re-run QAP polynomial checks and simulated proof receipts
+        compileQAP();
+        simulateProofReceipt();
+    };
+    
+    input.addEventListener("blur", finishEdit);
+    input.addEventListener("keydown", (e) => {
+        if (e.key === 'Enter') {
+            finishEdit();
+        }
+    });
 }
 
