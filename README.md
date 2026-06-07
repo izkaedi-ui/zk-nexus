@@ -21,6 +21,11 @@ Designed for systems programmers and zero-knowledge cryptography researchers, th
    - **Quadratic Solver**: Prove knowledge of a secret solution $x$ for the equation $x^2 + 5 = 14$ using intermediate constraint gates.
    - **3-Bit Range Proof**: Decomposes a secret value into 3 bits ($b_0, b_1, b_2$) and enforces boolean checks ($b \cdot (b - 1) = 0$) to prove the number is within $[0, 7]$.
 6. **WebGL/Canvas 2D Particle-Physics Engine**: Simulates particle flows along circuit links during witness evaluation, with smooth pan, zoom, and node dragging.
+7. **Powers-of-Tau Setup Ceremony**: Run simulated structured reference key generation ceremonies with custom seeds and visual toxic waste decay particle animations.
+8. **Continuous Ambient Synth Drone**: Synthesizes custom sawtooth/triangle wave pad chords in real-time, transitioning from dissonant minor to harmonic major depending on witness satisfaction.
+9. **Interactive Matrix Heatmaps**: Inspect hoverable visual grids of R1CS matrices $A, B,$ and $C$, with instant card highlighting for signals.
+10. **Static Code Diagnostics Warning Analyzer**: Reports unused signals or non-quadratic compiler warnings (degree > 2) directly inside the editor sidebar.
+11. **Comprehensive Export controls**: Package and download Witness vectors (JSON), R1CS matrices (JSON), or canvas blueprint layouts (PNG).
 
 ---
 
