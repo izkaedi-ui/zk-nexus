@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZK-Nexus: Interactive ZK-SNARK Constraint Compiler & Witness Flow Simulator</title>
+    <meta name="description" content="A visual, interactive tool to compile arithmetic circuits into R1CS constraint matrices, compute witness parameter variables, and generate ZK proof verification receipts.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon"></div>
+            <h1>ZK-Nexus</h1>
+            <span class="badge" id="app-env-badge">ZK-Compiler Simulator v1.0.0</span>
+        </div>
+        <div class="header-links">
+            <a href="https://github.com/zkaedii/zk-nexus" target="_blank" id="lnk-github">
+                <i class="fab fa-github"></i> Push to GitHub
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-grid">
+        
+        <!-- Left Side: Presets & Signals -->
+        <aside class="panel" id="panel-signals">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fas fa-sliders-h"></i> Circuit Control</h2>
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label class="form-label">Select Circuit Sandbox</label>
+                    <div id="presets" class="presets-bar"></div>
+                    <div id="preset-description" style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; margin-top: 0.5rem;"></div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.25rem 0;">
+                
+                <div class="form-group">
+                    <label class="form-label">Signal Assignment Witness</label>
+                    <div id="signal-list-container" class="signal-list"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center: Topology Visualizer & Log Console -->
+        <section style="display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- Circuit Graph Canvas -->
+            <div class="panel" style="flex: 1;">
+                <div class="panel-header">
+                    <h2 class="panel-title"><i class="fas fa-project-diagram"></i> Witness Flow Visualizer</h2>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">Drag nodes to rearrange. Scroll to zoom.</span>
+                </div>
+                <div class="panel-body" style="padding: 0; position: relative;">
+                    <div class="canvas-wrapper">
+                        <canvas id="circuit-canvas"></canvas>
+                        
+                        <!-- Floating controls -->
+                        <div class="floating-toolbar">
+                            <button class="tool-btn" id="btn-zoom-in" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                            <button class="tool-btn" id="btn-zoom-out" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                            <button class="tool-btn" id="btn-reset" title="Reset View"><i class="fas fa-arrows-alt"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Prover Log Output -->
+            <div class="panel" style="height: 200px;">
+                <div class="panel-header" style="padding: 0.75rem 1.25rem;">
+                    <h2 class="panel-title" style="font-size: 0.9rem;"><i class="fas fa-terminal"></i> Prover Console Output</h2>
+                    <button class="btn-primary" id="btn-prove" style="padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 4px;">
+                        <i class="fas fa-play"></i> Generate Proof
+                    </button>
+                </div>
+                <div class="panel-body" style="padding: 0;">
+                    <div id="log-box" class="prover-log"></div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Side: Constraints & R1CS Matrices -->
+        <aside class="panel" id="panel-r1cs">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fas fa-bezier-curve"></i> R1CS Constraints Matrix</h2>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                
+                <!-- Equations / Gates Satisfied -->
+                <div class="form-group">
+                    <label class="form-label">Constraint Verification</label>
+                    <div id="constraints-container" style="max-height: 180px; overflow-y: auto;"></div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0;">
+
+                <!-- Witness Vector -->
+                <div class="form-group">
+                    <label class="form-label">Compiled Witness Vector (s)</label>
+                    <div id="witness-vector-container" style="background: rgba(5,7,12,0.4); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color);"></div>
+                </div>
+                
+                <!-- Compiled R1CS Matrix Grid -->
+                <div class="form-group">
+                    <label class="form-label">Linear Combination Matrices (A, B, C)</label>
+                    <div id="r1cs-matrices-container" style="background: rgba(5,7,12,0.4); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0;">
+
+                <!-- simulated cryptographic proof receipt -->
+                <div class="form-group">
+                    <label class="form-label">Cryptographic Proof Receipt</label>
+                    <div id="proof-receipt-container"></div>
+                </div>
+
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
