@@ -232,6 +232,74 @@
         }
     }
 
+    function updateConstraintsPanel() {
+        const container = document.getElementById("constraints-container");
+        if (!container) return;
+        container.innerHTML = gates.map(gate => {
+            const isSat = gate.satisfied === true;
+            const isViolated = gate.satisfied === false;
+            const statusClass = isSat ? "satisfied" : (isViolated ? "violated" : "");
+            const statusIcon = isSat ? '<i class="fas fa-check-circle" style="color:var(--neon-green)"></i>' : 
+                                (isViolated ? '<i class="fas fa-times-circle" style="color:var(--neon-crimson)"></i>' : 
+                                '<i class="fas fa-question-circle" style="color:var(--text-muted)"></i>');
+            
+            const outSig = signals.find(s => s.id === gate.output);
+            const inSig0 = signals.find(s => s.id === gate.inputs[0]);
+            const inSig1 = signals.find(s => s.id === gate.inputs[1]);
+            
+            const outVal = outSig && outSig.val !== undefined ? outSig.val : "?";
+            const inVal0 = inSig0 && inSig0.val !== undefined ? inSig0.val : "?";
+            const inVal1 = inSig1 && inSig1.val !== undefined ? inSig1.val : "?";
+            
+            let gateExpr = "";
+            switch(gate.type) {
+                case "mul":
+                    gateExpr = `${gate.inputs[0]} (${inVal0}) * ${gate.inputs[1]} (${inVal1}) === ${gate.output} (${outVal})`;
+                    break;
+                case "add":
+                    const op = (gate.expr && gate.expr.includes('-')) ? '-' : '+';
+                    gateExpr = `${gate.inputs[0]} (${inVal0}) ${op} ${gate.inputs[1]} (${inVal1}) === ${gate.output} (${outVal})`;
+                    break;
+                case "bool":
+                    gateExpr = `${gate.inputs[0]} (${inVal0}) * (${gate.inputs[0]} (${inVal0}) - 1) === 0`;
+                    break;
+                case "scale2":
+                    gateExpr = `2 * ${gate.inputs[0]} (${inVal0}) === ${gate.output} (${outVal})`;
+                    break;
+                case "scale4":
+                    gateExpr = `4 * ${gate.inputs[0]} (${inVal0}) === ${gate.output} (${outVal})`;
+                    break;
+                default:
+                    gateExpr = gate.expr;
+            }
+            
+            return `
+                <div class="constraint-card ${statusClass}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span><strong>${gate.id.toUpperCase()}</strong> (${gate.type.toUpperCase()}): <code>${gateExpr}</code></span>
+                        <span>${statusIcon}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateNodeVisualValues() {
+        nodes.forEach(node => {
+            if (node.isGate) {
+                const gate = gates.find(g => g.id === node.id);
+                if (gate) {
+                    node.satisfied = gate.satisfied;
+                }
+            } else {
+                const sig = signals.find(s => s.id === node.id);
+                if (sig) {
+                    node.value = sig.val;
+                }
+            }
+        });
+    }
+
     // Register module APIs inside ZKRegistry
     ZKRegistry.registerConnector("loadPreset", loadPreset);
     ZKRegistry.registerConnector("renderSignalsPanel", renderSignalsPanel);
@@ -243,4 +311,6 @@
     ZKRegistry.registerConnector("exportCanvas", exportCanvas);
     ZKRegistry.registerConnector("toggleModalFields", toggleModalFields);
     ZKRegistry.registerConnector("saveNodeFromModal", saveNodeFromModal);
+    ZKRegistry.registerConnector("updateConstraintsPanel", updateConstraintsPanel);
+    ZKRegistry.registerConnector("updateNodeVisualValues", updateNodeVisualValues);
 })();
