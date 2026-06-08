@@ -228,7 +228,7 @@
                         case "mul":
                             outVal = valA * valB;
                             isSat = Math.abs(outSig.val - outVal) < 1e-9;
-                            if (outSig.type === 'local') {
+                            if (outSig.type === 'local' || outSig.type === 'output') {
                                 outSig.val = outVal;
                                 isSat = true;
                             }
@@ -240,7 +240,7 @@
                                 outVal = valA + valB;
                             }
                             isSat = Math.abs(outSig.val - outVal) < 1e-9;
-                            if (outSig.type === 'local') {
+                            if (outSig.type === 'local' || outSig.type === 'output') {
                                 outSig.val = outVal;
                                 isSat = true;
                             }
@@ -248,7 +248,7 @@
                         case "bool":
                             outVal = valA * (valA - 1);
                             isSat = Math.abs(outSig.val - outVal) < 1e-9;
-                            if (outSig.type === 'local') {
+                            if (outSig.type === 'local' || outSig.type === 'output') {
                                 outSig.val = outVal;
                                 isSat = true;
                             }
@@ -256,7 +256,7 @@
                         case "scale2":
                             outVal = 2.0 * valA;
                             isSat = Math.abs(outSig.val - outVal) < 1e-9;
-                            if (outSig.type === 'local') {
+                            if (outSig.type === 'local' || outSig.type === 'output') {
                                 outSig.val = outVal;
                                 isSat = true;
                             }
@@ -264,7 +264,7 @@
                         case "scale4":
                             outVal = 4.0 * valA;
                             isSat = Math.abs(outSig.val - outVal) < 1e-9;
-                            if (outSig.type === 'local') {
+                            if (outSig.type === 'local' || outSig.type === 'output') {
                                 outSig.val = outVal;
                                 isSat = true;
                             }
@@ -281,7 +281,7 @@
                     progress = true;
                     
                     const sigInputEl = document.querySelector(`#sig-card-${outSig.id} .signal-val-input`);
-                    if (sigInputEl && outSig.type === 'local') {
+                    if (sigInputEl && (outSig.type === 'local' || outSig.type === 'output')) {
                         sigInputEl.value = outSig.val.toFixed(2);
                     }
                 }

@@ -53,7 +53,7 @@
             }
             sig.val = parsedVal;
             log(`Signal ${sig.name} set to ${sig.val}`, "info");
-            solveWitness();
+            compileAndProve();
         }
     }
 
