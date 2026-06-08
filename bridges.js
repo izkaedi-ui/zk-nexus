@@ -194,7 +194,7 @@
         }
     }
 
-    function solveWitness() {
+    function solveWitness(suppressSound = false) {
         log("Solving constraint witness...", "info");
         
         gates.forEach(g => g.satisfied = null);
@@ -300,13 +300,13 @@
         
         if (satisfied) {
             log(`Witness converged: ${satisfiedGates}/${totalGates} constraints satisfied!`, "success");
-            if (playSound) playSoundChime('success');
+            if (playSound && !suppressSound) playSoundChime('success');
         } else {
             log(`Witness error: ${totalGates - satisfiedGates} constraints violated or unsolved!`, "error");
-            if (playSound) playSoundChime('failure');
+            if (playSound && !suppressSound) playSoundChime('failure');
         }
     }
-
+ 
     function compileCircom(code) {
         log("Compiling Circom code snippet...", "info");
         runCircomDiagnostics(code);
@@ -424,14 +424,14 @@
             log(`Compiled ${signals.length - 1} signals and ${gates.length} constraints from Circom.`, "success");
             renderSignalsPanel();
             buildTopologyGraph();
-            compileAndProve();
+            compileAndProve(true);
         } else {
             log("Circom compiler error: No valid constraints or signal declarations found.", "error");
         }
     }
-
-    function compileAndProve() {
-        solveWitness();
+ 
+    function compileAndProve(suppressSound = false) {
+        solveWitness(suppressSound);
         
         log("Compiling Circuit to R1CS matrices...", "info");
         

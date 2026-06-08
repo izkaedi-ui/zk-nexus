@@ -479,7 +479,6 @@
             }
         }
         
-        solveWitness();
         compileAndProve();
         buildTopologyGraph();
     }

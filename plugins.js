@@ -66,8 +66,7 @@
         if (optimizedCount > 0) {
             log(`Optimization finished: ${optimizedCount} local signals converted to constants.`, "success");
             renderSignalsPanel();
-            solveWitness();
-            compileAndProve();
+            compileAndProve(true);
         } else {
             log("Witness optimization run complete: No redundant local signals found.", "info");
         }

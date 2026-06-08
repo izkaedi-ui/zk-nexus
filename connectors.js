@@ -15,7 +15,7 @@
         
         renderSignalsPanel();
         buildTopologyGraph();
-        compileAndProve();
+        compileAndProve(true);
     }
 
     function renderSignalsPanel() {
@@ -71,7 +71,7 @@
         
         renderSignalsPanel();
         buildTopologyGraph();
-        compileAndProve();
+        compileAndProve(true);
     }
 
     function editMatrixCell(el) {
@@ -222,8 +222,7 @@
         
         renderSignalsPanel();
         buildTopologyGraph();
-        solveWitness();
-        compileAndProve();
+        compileAndProve(true);
         
         const newNode = nodes.find(n => n.id === name);
         if (newNode) {
