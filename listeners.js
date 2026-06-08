@@ -173,11 +173,32 @@
             const tgt = nodes.find(n => n.id === link.target);
             if (!src || !tgt) return;
             
+            const dx = tgt.x - src.x;
+            const dy = tgt.y - src.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            
+            const targetRadius = tgt.isGate ? 21 : 23;
+            const stopDist = targetRadius + 4;
+            const endX = tgt.x - (dx / dist) * stopDist;
+            const endY = tgt.y - (dy / dist) * stopDist;
+            
             ctx.beginPath();
             ctx.moveTo(src.x, src.y);
-            ctx.lineTo(tgt.x, tgt.y);
-            ctx.strokeStyle = "rgba(0, 242, 254, 0.15)";
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = "rgba(0, 242, 254, 0.22)";
+            ctx.lineWidth = 1.5;
             ctx.stroke();
+            
+            // Draw arrowhead
+            const arrowSize = 6;
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - arrowSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - arrowSize * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fillStyle = "rgba(0, 242, 254, 0.45)";
+            ctx.fill();
         });
         
         if (wiringSource) {
